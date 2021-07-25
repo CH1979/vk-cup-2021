@@ -5,3 +5,6 @@ env/
 data/
 plots/
 subs/
+
+*.pkl
+*.ipynb
