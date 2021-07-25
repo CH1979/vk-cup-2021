@@ -9,7 +9,8 @@ FEATURES = [
     'graduation_4',
     'graduation_5',
     'graduation_6',
-    'graduation_7'
+    'graduation_7',
+    'friends_school_education'
 ]
 TARGET = 'age'
 N_FOLDS = 5

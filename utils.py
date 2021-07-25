@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
+from lightgbm.plotting import plot_importance
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import KFold
 
@@ -48,6 +50,21 @@ def create_features(users, education, groups, friends):
 
     df = df.merge(groups, how='left', on='uid')
 
+    right_df = education[['uid', 'school_education']]
+    right_df = right_df.rename(columns={'uid': 'fuid'})
+
+    temp = friends.merge(
+        right_df,
+        how='left',
+        on='fuid'
+    )
+    temp = temp.groupby('uid')['school_education'].median().reset_index()
+    temp = temp.rename(
+        columns={'school_education': 'friends_school_education'}
+    )
+
+    df = df.merge(temp, how='left', on='uid')
+
     return df
 
 
@@ -60,7 +77,7 @@ def train_model(df):
         print(f'Fold #{n}')
         models[n] = LGBMRegressor(
             metric='rmse',
-            n_estimators=500,
+            n_estimators=600,
             learning_rate=0.01
         )
         models[n].fit(
@@ -70,9 +87,12 @@ def train_model(df):
                 df.loc[val_idx, settings.FEATURES],
                 df.loc[val_idx, settings.TARGET],
             )],
-            verbose=20
+            verbose=100
         )
         oof[val_idx] = models[n].predict(
             df.loc[val_idx, settings.FEATURES]
         )
+    for model in models.values():
+        fig = plot_importance(model)
+        plt.show()
     return oof, models
