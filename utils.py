@@ -58,9 +58,16 @@ def create_features(users, education, groups, friends):
         how='left',
         on='fuid'
     )
-    temp = temp.groupby('uid')['school_education'].median().reset_index()
+    temp = temp.groupby('uid')['school_education'] \
+        .agg(['min', 'max', 'mean', 'median']) \
+        .reset_index()
     temp = temp.rename(
-        columns={'school_education': 'friends_school_education'}
+        columns={
+            'min': 'friends_min_school_education',
+            'max': 'friends_max_school_education',
+            'mean': 'friends_mean_school_education',
+            'median': 'friends_median_school_education'
+        }
     )
 
     df = df.merge(temp, how='left', on='uid')
