@@ -16,7 +16,7 @@ FEATURES = [
     'friends_median_school_education',
 ]
 
-N_COMPONENTS = 30
+N_COMPONENTS = 500
 FRIENDS_EMBEDDINGS = [f'emb_{x}' for x in range(N_COMPONENTS)]
 FEATURES.extend(FRIENDS_EMBEDDINGS)
 

@@ -1,8 +1,7 @@
 import joblib
 from argparse import ArgumentParser
 
-import numpy as np
-from sklearn.metrics import roc_auc_score
+import pandas as pd
 
 import settings, utils
 
@@ -21,7 +20,11 @@ if args.model:
     )
     users['age'] = 0
 
-    df['linear_pred'] = utils.get_linear_predict(users, friends)
+    fe = utils.get_friends_embeddings(users, friends, inference=True)
+    df = pd.concat([
+        df,
+        pd.DataFrame(fe, columns=settings.FRIENDS_EMBEDDINGS)
+    ], axis=1)
     
     for model in models.values():
         pred = model.predict(df[settings.FEATURES])
@@ -40,19 +43,11 @@ else:
         friends
     )
     
-    df[settings.FRIENDS_EMBEDDINGS] = utils.get_friends_embeddings(users, friends)
-    df['outlier_21'] = 0
-    df.loc[df['age']==21, 'outlier_21'] = 1
-
-    oof_21, models = utils.train_model(df, 'outlier_21')
-    score_21 = roc_auc_score(
-        df['outlier_21'],
-        oof_21
-    )
-    print(f'oof mean: {np.mean(oof_21)}')
-    target_mean = np.mean(df['outlier_21'])
-    print(f'target mean: {target_mean}')
-    print(f'Roc-auc score for outlier: {score_21}')
+    fe = utils.get_friends_embeddings(users, friends)
+    df = pd.concat([
+        df,
+        pd.DataFrame(fe, columns=settings.FRIENDS_EMBEDDINGS)
+    ], axis=1)
 
     oof, models = utils.train_model(df, 'age')
     ac_score, lb_score = utils.get_score(
@@ -61,21 +56,8 @@ else:
         show_plot=True
     )
 
-    print('Single model result:')    
+    print('Model result:')    
     print(f'Account score: {ac_score}')
     print(f'Leaderboard score: {lb_score}')
-
-    oof = oof * (1 - oof_21) + 21 * oof_21
-
-    ac_score, lb_score = utils.get_score(
-        df['age'],
-        oof,
-        show_plot=True
-    )
-
-    print('Blend result:')
-    print(f'Account score: {ac_score}')
-    print(f'Leaderboard score: {lb_score}')
-
 
     joblib.dump(models, 'model.pkl')

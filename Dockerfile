@@ -1,6 +1,8 @@
-FROM continuumio/anaconda3:latest
+FROM python:3
 
-RUN pip install lightgbm
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Для локальной отладки
 COPY ./data/friends.csv /tmp/data/friends.csv
@@ -12,5 +14,7 @@ COPY settings.py .
 COPY utils.py .
 COPY solve.py .
 COPY model.pkl .
+COPY friend_encoder.pkl .
+COPY svd.pkl .
 
 CMD python solve.py -m model.pkl

@@ -1,3 +1,4 @@
+import joblib
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -86,7 +87,7 @@ def create_features(users, education, groups, friends):
     return df
 
 
-def get_friends_embeddings(users, friends):
+def get_friends_embeddings(users, friends, inference=False):
     user_encoder = LabelEncoder()
     friend_encoder = LabelEncoder()
 
@@ -98,7 +99,10 @@ def get_friends_embeddings(users, friends):
         data['uid'],
         users['uid']
     ])
-    friend_encoder.fit(full_data)
+    if inference:
+        friend_encoder = joblib.load('friend_encoder.pkl')
+    else:
+        friend_encoder.fit(full_data)
 
     data = data.drop_duplicates()
     data = users.merge(data, how='left', on='uid')
@@ -115,31 +119,65 @@ def get_friends_embeddings(users, friends):
     order = user_encoder.transform(users['uid'])
 
     svd = TruncatedSVD(n_components=settings.N_COMPONENTS)
-    result = svd.fit_transform(matrix)
+    if inference:
+        svd = joblib.load('svd_f.pkl')
+    else:
+        svd.fit(matrix)
+    result = svd.transform(matrix)
+
+    if not inference:
+        joblib.dump(friend_encoder, 'friend_encoder.pkl')
+        joblib.dump(svd, 'svd_f.pkl')
+
+    return result[order]
+
+
+def get_groups_embeddings(users, groups, inference=False):
+    user_encoder = LabelEncoder()
+    group_encoder = LabelEncoder()
+
+    if inference:
+        group_encoder = joblib.load('group_encoder.pkl')
+    else:
+        group_encoder.fit(groups['guid'])
+
+    user_encoder.fit(users['uid'])
+    t_uid = user_encoder.transform(groups['uid'])
+
+    group_encoder.classes_ = np.append(group_encoder.classes_, '<unknown>')
+    classes = group_encoder.classes_
+    groups.loc[~groups['guid'].isin(classes), 'guid'] = '<unknown>'
+    t_guid = group_encoder.transform(groups['guid'])
+
+    matrix = csr_matrix(
+        (np.ones(len(groups)), (t_uid, t_guid)),
+        shape=(max(t_uid) + 1, len(classes) + 1)
+    )
+    order = user_encoder.transform(users['uid'])
+
+    svd = TruncatedSVD(n_components=2)
+    if inference:
+        svd = joblib.load('svd_g.pkl')
+    else:
+        svd.fit(matrix)
+    result = svd.transform(matrix)
+
+    if not inference:
+        joblib.dump(group_encoder, 'group_encoder.pkl')
+        joblib.dump(svd, 'svd_g.pkl')
 
     return result[order]
 
 
 def train_model(df, target):
-    if target == 'age':
-        folds = KFold(n_splits=settings.N_FOLDS)
-        splits = folds.split(df)
-        model = LGBMRegressor(
-            metric='rmse',
-            n_estimators=800,
-            learning_rate=0.01
-        )
-        verbose = 100
-    else:
-        folds = StratifiedKFold(n_splits=settings.N_FOLDS)
-        splits = folds.split(df, df['outlier_21'])
-        model = LGBMClassifier(
-            metric = 'auc',
-            n_estimators=100,
-            learning_rate=0.01
-        )
-        verbose = 20
-
+    folds = KFold(n_splits=settings.N_FOLDS)
+    splits = folds.split(df)
+    model = LGBMRegressor(
+        metric='rmse',
+        n_estimators=5000,
+        learning_rate=0.01
+    )
+    verbose = 250
     models = dict()
     oof = np.zeros(df.shape[0])
     
@@ -156,14 +194,9 @@ def train_model(df, target):
             verbose=verbose
         )
         features = df.loc[val_idx, settings.FEATURES]
-        if target == 'age':
-            oof[val_idx] = models[n].predict(
-                features
-            )
-        else:
-            oof[val_idx] = models[n].predict_proba(
-                features
-            )[:, 1]
+        oof[val_idx] = models[n].predict(
+            features
+        )
     # for model in models.values():
     #     fig = plot_importance(model)
     #     plt.show()
