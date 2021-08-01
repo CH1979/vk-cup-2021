@@ -13,9 +13,13 @@ FEATURES = [
     'friends_min_school_education',
     'friends_max_school_education',
     'friends_mean_school_education',
-    'friends_median_school_education'
+    'friends_median_school_education',
 ]
-TARGET = 'age'
+
+N_COMPONENTS = 30
+FRIENDS_EMBEDDINGS = [f'emb_{x}' for x in range(N_COMPONENTS)]
+FEATURES.extend(FRIENDS_EMBEDDINGS)
+
 N_FOLDS = 5
 OUTPUT_LOCAL = './subs/result'
 OUTPUT_REMOTE = '/var/log/result'
