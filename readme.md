@@ -1,6 +1,8 @@
 # VK CUP 2021
 ## ML - трек. Отборочный раунд.
 ---
+[https://cups.mail.ru/ru/contests/vkcup2021](https://cups.mail.ru/ru/contests/vkcup2021)
+---
 Локальное обучение модели:
 ```
 python -m pip install -r requirements.txt
